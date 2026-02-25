@@ -26,9 +26,9 @@ variables:
 - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/develop') }}:
   - group: AreebGPT-Dev-GCP-Variables
   - group: AreebGPT-Dev-LibreChat-Variables
-# - ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}:
-#   - group: AreebGPT-Prod-GCP-Variables
-#   - group: AreebGPT-Prod-LiberChat-Variables
+- ${{ if eq(variables['Build.SourceBranch'], 'refs/heads/master') }}:
+  - group: AreebGPT-Prod-GCP-Variables
+  # - group: AreebGPT-Prod-LiberChat-Variables
 
 stages:
 - stage: GET_NEW_VERSION
