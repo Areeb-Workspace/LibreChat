@@ -1,10 +1,6 @@
 name: Sync Upstream
 
 on:
-  push:
-    branches:
-      - sync
-  workflow_dispatch:
   schedule:
     - cron: '0 0 * * 0'
 
