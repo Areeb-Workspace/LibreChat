@@ -1,0 +1,37 @@
+name: Sync Upstream
+
+on:
+  # Trigger manually or on a schedule (e.g., every 6 hours)
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout target branch
+        uses: actions/checkout@v4
+        with:
+          repository: Areeb-Workspace/LibreChat
+          ref: sync
+          token: ${{ secrets.SYNC_PAT }} # Your Personal Access Token stored in Secrets
+          fetch-depth: 0
+
+      - name: Setup Git
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+
+      - name: Add Upstream and Sync
+        run: |
+          # Add the public repo as a remote
+          git remote add upstream https://github.com/danny-avila/LibreChat.git
+          git fetch upstream main
+          
+          # Merge changes from upstream/main into your current branch (sync)
+          # --allow-unrelated-histories is used if the repos weren't originally forked
+          git merge upstream/main --allow-unrelated-histories -m "Sync: Update from upstream main"
+          
+          # Push the changes back to your repo
+          git push origin sync
