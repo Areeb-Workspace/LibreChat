@@ -17,6 +17,7 @@ jobs:
         with:
           repository: Areeb-Workspace/LibreChat
           ref: sync
+          token: ${{ secrets.SYNC_PAT }} # Your Personal Access Token stored in Secrets
           fetch-depth: 0
 
       - name: Setup Git
