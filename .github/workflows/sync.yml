@@ -2,6 +2,8 @@ name: Sync Upstream
 
 on:
   # Trigger manually or on a schedule (e.g., every 6 hours)
+  branch:
+    - sync
   workflow_dispatch:
   schedule:
     - cron: '0 */6 * * *'
