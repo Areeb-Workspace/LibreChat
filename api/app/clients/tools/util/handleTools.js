@@ -47,6 +47,7 @@ const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
 const { getRoleByName } = require('~/models');
+const { log } = require('handlebars');
 
 /**
  * Validates the availability and authentication of tools for a user based on environment variables or user-specific plugin authentication values.
@@ -221,6 +222,61 @@ const loadTools = async ({
         toolContextMap.gemini_image_gen = toolContext;
       }
       return createGeminiImageTool({
+        ...authValues,
+        isAgent: !!agent,
+        req: options.req,
+        imageFiles,
+        userId: user,
+        fileStrategy,
+      });
+    },
+    /**
+     * Custom constructor for openrouter_image_gen — mirrors gemini_image_gen pattern.
+     * Injects uploaded image file_ids into the system prompt via toolContextMap,
+     * so the model can see them and reference them in tool calls.
+     * See buildImageToolContext() in packages/api/src/tools/toolkits/imageContext.ts
+     */
+    openrouter_image_gen: async (toolContextMap) => {
+      const authFields = getAuthFields('openrouter_image_gen');
+      const authValues = await loadAuthValues({ userId: user, authFields, throwError: false });
+      const { req: _req, res: _res, ...loggableOptions } = options;
+      logger.debug('1. options:', loggableOptions);
+      logger.debug('2. options.tool_resources:', options.tool_resources);
+
+      // const toolResourceKey = EToolResources.image_edit;
+      // logger.debug("3. EToolResources.image_edit key:", toolResourceKey);
+
+      // const toolResourceEntry = options.tool_resources?.[toolResourceKey];
+      // logger.debug("4. tool_resources[image_edit] entry:", toolResourceEntry);
+
+      // const files = toolResourceEntry?.files;
+      // logger.debug("5. .files value:", files);
+
+      // const imageFiles2 = files ?? [];
+      // logger.debug("6. Final imageFiles (after ?? []):", imageFiles2);      
+      
+      
+      /** Uploaded images from the current request — their file_ids will be surfaced to the model */
+      const imageFiles = options.tool_resources?.[EToolResources.image_edit]?.files ?? [];
+      /*Log imageFiles */
+
+      /**
+       * Build a context string listing all uploaded image file_ids.
+       * This string is injected into the system prompt each turn (via toolContextMap),
+       * allowing the model to read and reference these IDs in its tool calls.
+       */
+      const toolContext = buildImageToolContext({
+        imageFiles,
+        toolName: 'openrouter_image_gen',
+        contextDescription: 'image context',
+      });
+      if (toolContext) {
+        toolContextMap.openrouter_image_gen = toolContext;
+      }
+      logger.debug('Initializing OpenRouterImageGen with context: ', {
+        toolContext,
+      });
+      return new OpenRouterImageGen({
         ...authValues,
         isAgent: !!agent,
         req: options.req,
