@@ -189,6 +189,41 @@ describe('ToolCall', () => {
     });
   });
 
+  describe('presentation result card rendering', () => {
+    it('does not render the presentation result card inside the tool call row', () => {
+      const output = JSON.stringify({
+        content: [
+          {
+            type: 'text',
+            text: 'Presentation generated successfully.\nTitle: Demo Deck\nSlides: 4',
+          },
+          {
+            type: 'resource_link',
+            uri: 'https://example.com/demo_deck.html',
+            name: 'demo_deck.html',
+            mimeType: 'text/html',
+          },
+          {
+            type: 'resource_link',
+            uri: 'https://example.com/demo_deck.pptx',
+            name: 'demo_deck.pptx',
+            mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          },
+        ],
+      });
+
+      renderWithRecoil(<ToolCall {...mockProps} name="generate_presentation_mcp_slideforge" output={output} />);
+
+      expect(screen.queryByTestId('presentation-result-card')).not.toBeInTheDocument();
+    });
+
+    it('does not render the presentation result card for unrelated tool output', () => {
+      renderWithRecoil(<ToolCall {...mockProps} name="web_search_mcp_slideforge" />);
+
+      expect(screen.queryByTestId('presentation-result-card')).not.toBeInTheDocument();
+    });
+  });
+
   describe('tool call info visibility', () => {
     it('should toggle tool call info when clicking header', () => {
       renderWithRecoil(<ToolCall {...mockProps} />);
