@@ -1,4 +1,6 @@
 const { z } = require('zod');
+/** Used to generate unique file_ids for each image — enables the model to reference generated images in future turns */
+const { v4 } = require('uuid');
 const axios = require('axios');
 const { Tool } = require('@langchain/core/tools');
 const { logger } = require('@librechat/data-schemas');
@@ -283,6 +285,10 @@ Error Message: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringif
     // Extract base64 from data URL (format: "data:image/png;base64,...")
     const imageUrl = images[0].image_url.url;
 
+    logger.debug('[OpenRouterImageGen] images[0] keys:', Object.keys(images[0].image_url));
+
+    
+
     // Return base64 directly for agents (consistent with other image tools)
     try {
       // Ensure imageUrl is in the correct format
@@ -291,6 +297,8 @@ Error Message: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringif
         // If it's already base64 without data: prefix, add it
         base64Url = `data:image/png;base64,${imageUrl}`;
       }
+
+    logger.debug('[OpenRouterImageGen] Image URL:', base64Url.slice(0, 50));
 
       const content = [
         {
@@ -301,13 +309,21 @@ Error Message: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringif
         },
       ];
 
+      /**
+       * Generate a unique file_id for this image and embed it in the response text.
+       * This enables the model to reference this generated image in future turns:
+       * - The ID is visible in conversation history (assistant/tool messages)
+       * - The model can pass it to image editing tools (e.g., openrouter_image_gen with image_ids param)
+       * Mirrors the pattern in OpenAIImageTools.js (image_gen_oai / image_edit_oai).
+       */
+      const file_ids = [v4()];
       const response = [
         {
           type: ContentTypes.TEXT,
-          text: displayMessage,
+          text: displayMessage + `\n\ngenerated_image_id: "${file_ids[0]}"`,
         },
       ];
-      return [response, { content }];
+      return [response, { content, file_ids }];
     } catch (error) {
       logger.error('[OpenRouterImageGen] Error processing image for agent:', error);
       return this.returnValue(`Failed to process the image. ${error.message}`);
