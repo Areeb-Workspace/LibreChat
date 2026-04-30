@@ -24,13 +24,14 @@ jest.mock('~/components/Web/Sources', () => ({
 jest.mock('../Part', () => ({
   __esModule: true,
   default: ({ part }: { part?: TMessageContentParts }) => {
-    if (part?.type === ContentTypes.TEXT) {
+    if (part?.type === 'text') {
       const text = typeof part.text === 'string' ? part.text : part.text?.value;
       return <div data-testid="message-text-part">{text}</div>;
     }
 
-    if (part?.type === ContentTypes.TOOL_CALL) {
-      return <div data-testid="tool-call-part">tool call</div>;
+    if (part?.type === 'tool_call') {
+      const toolCallLabel = 'tool call';
+      return <div data-testid="tool-call-part">{toolCallLabel}</div>;
     }
 
     return null;

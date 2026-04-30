@@ -38,12 +38,14 @@ type ContentPartsProps = {
 
 function isCompletedToolOutput(toolCall: Agents.ToolCall, isSubmitting: boolean) {
   const progress = typeof toolCall.progress === 'number' ? toolCall.progress : 0.1;
-  const output =
-    'output' in toolCall
-      ? toolCall.output
-      : toolCall.type === ToolCallTypes.FUNCTION && ToolCallTypes.FUNCTION in toolCall
-        ? toolCall.function.output
-        : undefined;
+  let output: unknown;
+
+  if ('output' in toolCall) {
+    output = toolCall.output;
+  } else if (toolCall.type === ToolCallTypes.FUNCTION && ToolCallTypes.FUNCTION in toolCall) {
+    output = toolCall.function.output;
+  }
+
   const cancelled =
     (!isSubmitting && progress < 1) ||
     String(output ?? '')

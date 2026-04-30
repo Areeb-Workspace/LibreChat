@@ -1,5 +1,4 @@
-const PPTX_MIME_TYPE =
-  'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+const PPTX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
 
 type ResourceLinkLike = {
   type?: string;
@@ -34,10 +33,7 @@ type AttachmentLike = {
   filepath?: string;
 };
 
-type PresentationMetadata = Pick<
-  PresentationResult,
-  'title' | 'slides' | 'theme' | 'sizeLabel'
->;
+type PresentationMetadata = Pick<PresentationResult, 'title' | 'slides' | 'theme' | 'sizeLabel'>;
 
 function safeJsonParse(value: string) {
   try {
@@ -527,8 +523,7 @@ export function extractPresentationResult({
     inferTitleFromFilename(html?.name ?? html?.uri ?? pptx?.name ?? pptx?.uri);
 
   const slideValue = extractLineValue(combinedText, 'Slides');
-  const slides =
-    slideValue != null ? Number.parseInt(slideValue, 10) : structuredMetadata.slides;
+  const slides = slideValue != null ? Number.parseInt(slideValue, 10) : structuredMetadata.slides;
 
   const theme = normalizeTheme(extractLineValue(combinedText, 'Theme')) ?? structuredMetadata.theme;
   const sizeLabel = extractLineValue(combinedText, 'Size') ?? structuredMetadata.sizeLabel;

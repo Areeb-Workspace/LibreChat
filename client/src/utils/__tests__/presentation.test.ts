@@ -31,7 +31,9 @@ describe('extractPresentationResult', () => {
       ],
     });
 
-    expect(extractPresentationResult({ name: 'generate_presentation_mcp_slideforge', output })).toEqual(
+    expect(
+      extractPresentationResult({ name: 'generate_presentation_mcp_slideforge', output }),
+    ).toEqual(
       expect.objectContaining({
         title: 'The Impact of AI in Education',
         htmlUrl: 'https://example.com/presentations/impact_ai_1234.html',
@@ -85,7 +87,9 @@ describe('extractPresentationResult', () => {
       'Resource MIME Type: application/vnd.openxmlformats-officedocument.presentationml.presentation',
     ].join('\n');
 
-    expect(extractPresentationResult({ name: 'generate_presentation_mcp_slideforge', output })).toEqual(
+    expect(
+      extractPresentationResult({ name: 'generate_presentation_mcp_slideforge', output }),
+    ).toEqual(
       expect.objectContaining({
         title: 'Gamal Abdel Nasser',
         htmlUrl: 'http://localhost:3334/outputs/gamal_abdel_nasser_ab12cd34.html',
@@ -149,7 +153,8 @@ describe('extractPresentationResult', () => {
 
     expect(extractPresentationResult({ name: 'render_artifact_presentation', output })).toEqual(
       expect.objectContaining({
-        previewImageUrl: 'http://localhost:3335/outputs/attention_is_all_you_need_78a4e30a_slide_1.png',
+        previewImageUrl:
+          'http://localhost:3335/outputs/attention_is_all_you_need_78a4e30a_slide_1.png',
         previewImages: [
           {
             url: 'http://localhost:3335/outputs/attention_is_all_you_need_78a4e30a_slide_1.png',

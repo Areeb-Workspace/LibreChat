@@ -212,7 +212,9 @@ describe('ToolCall', () => {
         ],
       });
 
-      renderWithRecoil(<ToolCall {...mockProps} name="generate_presentation_mcp_slideforge" output={output} />);
+      renderWithRecoil(
+        <ToolCall {...mockProps} name="generate_presentation_mcp_slideforge" output={output} />,
+      );
 
       expect(screen.queryByTestId('presentation-result-card')).not.toBeInTheDocument();
     });
