@@ -37,7 +37,7 @@ const {
   TavilySearchResults,
   createGeminiImageTool,
   createOpenAIImageTools,
-  OpenRouterImageGen,
+  createOpenRouterImageTools,
 } = require('../');
 const { createMCPTool, createMCPTools, resolveConfigServers } = require('~/server/services/MCP');
 const { createFileSearchTool, primeFiles: primeSearchFiles } = require('./fileSearch');
@@ -184,7 +184,6 @@ const loadTools = async ({
     'azure-ai-search': StructuredACS,
     traversaal_search: TraversaalSearch,
     tavily_search_results_json: TavilySearchResults,
-    openrouter_image_gen: OpenRouterImageGen,
   };
 
   const customConstructors = {
@@ -231,40 +230,16 @@ const loadTools = async ({
       });
     },
     /**
-     * Custom constructor for openrouter_image_gen — mirrors gemini_image_gen pattern.
-     * Injects uploaded image file_ids into the system prompt via toolContextMap,
-     * so the model can see them and reference them in tool calls.
-     * See buildImageToolContext() in packages/api/src/tools/toolkits/imageContext.ts
+     * Custom constructor for openrouter_image_gen and openrouter_image_fetch.
+     * Returns an array of tools: [imageGenTool, imageFetchTool].
+     * Injects uploaded image file_ids into the system prompt via toolContextMap.
      */
     openrouter_image_gen: async (toolContextMap) => {
       const authFields = getAuthFields('openrouter_image_gen');
       const authValues = await loadAuthValues({ userId: user, authFields, throwError: false });
-      const { req: _req, res: _res, ...loggableOptions } = options;
-      logger.debug('1. options:', loggableOptions);
-      logger.debug('2. options.tool_resources:', options.tool_resources);
 
-      // const toolResourceKey = EToolResources.image_edit;
-      // logger.debug("3. EToolResources.image_edit key:", toolResourceKey);
-
-      // const toolResourceEntry = options.tool_resources?.[toolResourceKey];
-      // logger.debug("4. tool_resources[image_edit] entry:", toolResourceEntry);
-
-      // const files = toolResourceEntry?.files;
-      // logger.debug("5. .files value:", files);
-
-      // const imageFiles2 = files ?? [];
-      // logger.debug("6. Final imageFiles (after ?? []):", imageFiles2);      
-      
-      
-      /** Uploaded images from the current request — their file_ids will be surfaced to the model */
       const imageFiles = options.tool_resources?.[EToolResources.image_edit]?.files ?? [];
-      /*Log imageFiles */
 
-      /**
-       * Build a context string listing all uploaded image file_ids.
-       * This string is injected into the system prompt each turn (via toolContextMap),
-       * allowing the model to read and reference these IDs in its tool calls.
-       */
       const toolContext = buildImageToolContext({
         imageFiles,
         toolName: 'openrouter_image_gen',
@@ -273,10 +248,10 @@ const loadTools = async ({
       if (toolContext) {
         toolContextMap.openrouter_image_gen = toolContext;
       }
-      logger.debug('Initializing OpenRouterImageGen with context: ', {
+      logger.debug('Initializing OpenRouterImageTools with context: ', {
         toolContext,
       });
-      return new OpenRouterImageGen({
+      return createOpenRouterImageTools({
         ...authValues,
         isAgent: !!agent,
         req: options.req,
