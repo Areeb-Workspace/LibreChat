@@ -5,6 +5,7 @@
  */
 export const toolkitExpansion = {
   image_gen_oai: ['image_edit_oai'],
+  openrouter_image_gen: ['openrouter_image_fetch'],
 } as const satisfies Readonly<Record<string, readonly string[]>>;
 
 /** Reverse mapping: maps child tool names to their parent toolkit key */
