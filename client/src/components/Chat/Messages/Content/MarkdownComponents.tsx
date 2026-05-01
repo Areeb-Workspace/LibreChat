@@ -3,6 +3,7 @@ import { useRecoilValue } from 'recoil';
 import { useToastContext } from '@librechat/client';
 import { PermissionTypes, Permissions, apiBaseUrl } from 'librechat-data-provider';
 import MermaidErrorBoundary from '~/components/Messages/Content/MermaidErrorBoundary';
+import VideoPlayer, { isVideoUrl } from './VideoPlayer';
 import CodeBlock from '~/components/Messages/Content/CodeBlock';
 import Mermaid from '~/components/Messages/Content/Mermaid';
 import useHasAccess from '~/hooks/Roles/useHasAccess';
@@ -181,21 +182,19 @@ type TImageProps = {
 };
 
 export const img: React.ElementType = memo(({ src, alt, title, className, style }: TImageProps) => {
-  // Get the base URL from the API endpoints
   const baseURL = apiBaseUrl();
 
-  // If src starts with /images/, prepend the base URL
   const fixedSrc = useMemo(() => {
     if (!src) return src;
-
-    // If it's already an absolute URL or doesn't start with /images/, return as is
     if (src.startsWith('http') || src.startsWith('data:') || !src.startsWith('/images/')) {
       return src;
     }
-
-    // Prepend base URL to the image path
     return `${baseURL}${src}`;
   }, [src, baseURL]);
+
+  if (isVideoUrl(src)) {
+    return <VideoPlayer src={fixedSrc ?? ''} alt={alt} />;
+  }
 
   return <img src={fixedSrc} alt={alt} title={title} className={className} style={style} />;
 });
