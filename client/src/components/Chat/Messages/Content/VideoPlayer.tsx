@@ -1,6 +1,7 @@
 import React, { memo, useMemo, useState, useRef } from 'react';
 import { apiBaseUrl } from 'librechat-data-provider';
 import { cn } from '~/utils';
+import { useLocalize } from '~/hooks';
 
 const VIDEO_EXTENSIONS = /\.(mp4|webm|ogv|mov|m4v|3gp)(\?.*)?$/i;
 
@@ -21,6 +22,7 @@ const VideoPlayer = memo(function VideoPlayer({ src, alt }: VideoPlayerProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const localize = useLocalize();
 
   const absoluteVideoUrl = useMemo(() => {
     if (!src) {
@@ -62,14 +64,14 @@ const VideoPlayer = memo(function VideoPlayer({ src, alt }: VideoPlayerProps) {
   if (hasError) {
     return (
       <div className="my-2 flex items-center gap-2 rounded-lg border border-border-medium bg-surface-secondary px-4 py-3 text-sm text-text-secondary">
-        <span>⚠️ Video failed to load</span>
+        <span>{localize('com_ui_video_failed')}</span>
         <a
           href={absoluteVideoUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="text-text-primary underline"
         >
-          Open directly
+          {localize('com_ui_video_open_directly')}
         </a>
       </div>
     );
@@ -95,10 +97,11 @@ const VideoPlayer = memo(function VideoPlayer({ src, alt }: VideoPlayerProps) {
             'w-full transition-opacity duration-200',
             isLoaded ? 'opacity-100' : 'opacity-50',
           )}
-          aria-label={alt || 'Generated video'}
+          aria-label={alt || localize('com_ui_video_generated')}
         >
           <source src={absoluteVideoUrl} type="video/mp4" />
-          Your browser does not support the video tag.
+          <track kind="captions" />
+          {localize('com_ui_video_unsupported')}
         </video>
       </div>
       <div className="mt-1.5 flex items-center justify-between px-0.5">
@@ -109,9 +112,9 @@ const VideoPlayer = memo(function VideoPlayer({ src, alt }: VideoPlayerProps) {
           type="button"
           onClick={handleDownload}
           className="ml-auto text-xs text-text-secondary transition-colors hover:text-text-primary"
-          aria-label="Download video"
+          aria-label={localize('com_ui_download')}
         >
-          ⬇ Download
+          ⬇ {localize('com_ui_download')}
         </button>
       </div>
     </div>

@@ -1517,5 +1517,9 @@
   "com_ui_zoom_in": "Zoom in",
   "com_ui_zoom_level": "Zoom level",
   "com_ui_zoom_out": "Zoom out",
-  "com_user_message": "You"
+  "com_user_message": "You",
+  "com_ui_video_failed": "⚠️ Video failed to load",
+  "com_ui_video_open_directly": "Open directly",
+  "com_ui_video_unsupported": "Your browser does not support the video tag.",
+  "com_ui_video_generated": "Generated video"
 }
