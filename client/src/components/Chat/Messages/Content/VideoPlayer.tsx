@@ -17,7 +17,7 @@ type VideoPlayerProps = {
   alt?: string;
 };
 
-const VideoPlayer = memo(({ src, alt }: VideoPlayerProps) => {
+const VideoPlayer = memo(function VideoPlayer({ src, alt }: VideoPlayerProps) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);

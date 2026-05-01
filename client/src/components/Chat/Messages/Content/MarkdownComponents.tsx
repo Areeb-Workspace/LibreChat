@@ -181,7 +181,7 @@ type TImageProps = {
   style?: React.CSSProperties;
 };
 
-export const img: React.ElementType = memo(({ src, alt, title, className, style }: TImageProps) => {
+export const img: React.ElementType = memo(function Img({ src, alt, title, className, style }: TImageProps) {
   const baseURL = apiBaseUrl();
 
   const fixedSrc = useMemo(() => {
