@@ -207,6 +207,23 @@ actions:
 # To allow internal targets like host.docker.internal, you MUST explicitly add them to allowedDomains.
 # Supports wildcards: '*.example.com' matches 'api.example.com', 'staging.example.com', etc.
 # Supports protocol/port restrictions: 'https://api.example.com:8443' restricts to specific protocol/port.
+
+mcpSettings:
+  allowedDomains:
+    - 'host.docker.internal'        # Docker host access
+    - 'visual-memory-agent'         # Your agent's Docker service name
+    - 'localhost'                   # Local development
+    - '*.example.com'               # Wildcard subdomain
+    - 'https://secure.api.com'      # Protocol-restricted
+    - 'http://internal:8080'        # Protocol and port restricted
+
+mcpServers:
+  visual-memory-agent:
+    transport: sse
+    url: http://visual-memory-agent:8091/sse
+    headers:
+      Authorization: "Bearer ${MCP_ACCESS_TOKEN}"
+
 # mcpSettings:
 #   allowedDomains:
 #     - 'host.docker.internal'    # Docker host access (required for Docker setups)
