@@ -15,6 +15,7 @@ import { useGetEndpointsQuery, useListAgentsQuery } from '~/data-provider';
 import { useModelSelectorChatContext } from './ModelSelectorChatContext';
 import useSelectMention from '~/hooks/Input/useSelectMention';
 import { filterItems } from './utils';
+import { useMockPermissions } from '~/hooks/Endpoint/mockApi';
 
 type ModelSelectorContextType = {
   // State
@@ -58,7 +59,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const agentsMap = useAgentsMapContext();
   const assistantsMap = useAssistantsMapContext();
   const { data: endpointsConfig } = useGetEndpointsQuery();
-  const { endpoint, model, spec, agent_id, assistant_id, conversation, newConversation } =
+  const { endpoint, model, spec, agent_id, assistant_id, getConversation, newConversation } =
     useModelSelectorChatContext();
   const localize = useLocalize();
   const { announcePolite } = useLiveAnnouncer();
@@ -89,12 +90,36 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
     },
   );
 
-  const { mappedEndpoints, endpointRequiresUserKey } = useEndpoints({
+// ORIGINAL CODE - WITHOUT PERMISSION CHECK
+  // const { mappedEndpoints, endpointRequiresUserKey } = useEndpoints({
+  //   agents,
+  //   assistantsMap,
+  //   startupConfig,
+  //   endpointsConfig,
+  // });
+
+  // CUSTOM - Added permissions check
+  const { mappedEndpoints: originalMappedEndpoints, endpointRequiresUserKey } = useEndpoints({
     agents,
     assistantsMap,
     startupConfig,
     endpointsConfig,
   });
+
+  // ===================================================
+  // CUSTOM - Check permissions API status
+  // If API returns error or null, set mappedEndpoints to empty array
+  // ===================================================
+  const { error: permissionsError, data: permissionsData } = useMockPermissions();
+  const mappedEndpoints = useMemo(() => {
+    // If API returned error or null data, return empty array
+    if (permissionsError || !permissionsData) {
+      return [];
+    }
+    // Otherwise return original mappedEndpoints
+    return originalMappedEndpoints;
+  }, [originalMappedEndpoints, permissionsError, permissionsData]);
+  // ===================================================
 
   const getModelDisplayName = useCallback(
     (endpoint: Endpoint, model: string): string => {
@@ -114,7 +139,7 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
   const { onSelectEndpoint, onSelectSpec } = useSelectMention({
     // presets,
     modelSpecs,
-    conversation,
+    getConversation,
     assistantsMap,
     endpointsConfig,
     newConversation,
@@ -171,90 +196,115 @@ export function ModelSelectorProvider({ children, startupConfig }: ModelSelector
       }, 200),
     [],
   );
-  const setEndpointSearchValue = (endpoint: string, value: string) => {
+  const setEndpointSearchValue = useCallback((endpoint: string, value: string) => {
     setEndpointSearchValues((prev) => ({
       ...prev,
       [endpoint]: value,
     }));
-  };
+  }, []);
 
-  const handleSelectSpec = (spec: t.TModelSpec) => {
-    let model = spec.preset.model ?? null;
-    onSelectSpec?.(spec);
-    if (isAgentsEndpoint(spec.preset.endpoint)) {
-      model = spec.preset.agent_id ?? '';
-    } else if (isAssistantsEndpoint(spec.preset.endpoint)) {
-      model = spec.preset.assistant_id ?? '';
-    }
-    setSelectedValues({
-      endpoint: spec.preset.endpoint,
-      model,
-      modelSpec: spec.name,
-    });
-  };
+  const handleSelectSpec = useCallback(
+    (spec: t.TModelSpec) => {
+      let model = spec.preset.model ?? null;
+      onSelectSpec?.(spec);
+      if (isAgentsEndpoint(spec.preset.endpoint)) {
+        model = spec.preset.agent_id ?? '';
+      } else if (isAssistantsEndpoint(spec.preset.endpoint)) {
+        model = spec.preset.assistant_id ?? '';
+      }
+      setSelectedValues({
+        endpoint: spec.preset.endpoint,
+        model,
+        modelSpec: spec.name,
+      });
+    },
+    [onSelectSpec],
+  );
 
-  const handleSelectEndpoint = (endpoint: Endpoint) => {
-    if (!endpoint.hasModels) {
-      if (endpoint.value) {
-        onSelectEndpoint?.(endpoint.value);
+  const handleSelectEndpoint = useCallback(
+    (endpoint: Endpoint) => {
+      if (!endpoint.hasModels) {
+        if (endpoint.value) {
+          onSelectEndpoint?.(endpoint.value);
+        }
+        setSelectedValues({
+          endpoint: endpoint.value,
+          model: '',
+          modelSpec: '',
+        });
+      }
+    },
+    [onSelectEndpoint],
+  );
+
+  const handleSelectModel = useCallback(
+    (endpoint: Endpoint, model: string) => {
+      if (isAgentsEndpoint(endpoint.value)) {
+        onSelectEndpoint?.(endpoint.value, {
+          agent_id: model,
+          model: agentsMap?.[model]?.model ?? '',
+        });
+      } else if (isAssistantsEndpoint(endpoint.value)) {
+        onSelectEndpoint?.(endpoint.value, {
+          assistant_id: model,
+          model: assistantsMap?.[endpoint.value]?.[model]?.model ?? '',
+        });
+      } else if (endpoint.value) {
+        onSelectEndpoint?.(endpoint.value, { model });
       }
       setSelectedValues({
         endpoint: endpoint.value,
-        model: '',
+        model,
         modelSpec: '',
       });
-    }
-  };
 
-  const handleSelectModel = (endpoint: Endpoint, model: string) => {
-    if (isAgentsEndpoint(endpoint.value)) {
-      onSelectEndpoint?.(endpoint.value, {
-        agent_id: model,
-        model: agentsMap?.[model]?.model ?? '',
-      });
-    } else if (isAssistantsEndpoint(endpoint.value)) {
-      onSelectEndpoint?.(endpoint.value, {
-        assistant_id: model,
-        model: assistantsMap?.[endpoint.value]?.[model]?.model ?? '',
-      });
-    } else if (endpoint.value) {
-      onSelectEndpoint?.(endpoint.value, { model });
-    }
-    setSelectedValues({
-      endpoint: endpoint.value,
-      model,
-      modelSpec: '',
-    });
+      const modelDisplayName = getModelDisplayName(endpoint, model);
+      const announcement = localize('com_ui_model_selected', { 0: modelDisplayName });
+      announcePolite({ message: announcement, isStatus: true });
+    },
+    [agentsMap, announcePolite, assistantsMap, getModelDisplayName, localize, onSelectEndpoint],
+  );
 
-    const modelDisplayName = getModelDisplayName(endpoint, model);
-    const announcement = localize('com_ui_model_selected', { 0: modelDisplayName });
-    announcePolite({ message: announcement, isStatus: true });
-  };
-
-  const value = {
-    // State
-    searchValue,
-    searchResults,
-    selectedValues,
-    endpointSearchValues,
-    // LibreChat
-    agentsMap,
-    modelSpecs,
-    assistantsMap,
-    mappedEndpoints,
-    endpointsConfig,
-
-    // Functions
-    handleSelectSpec,
-    handleSelectModel,
-    setSelectedValues,
-    handleSelectEndpoint,
-    setEndpointSearchValue,
-    endpointRequiresUserKey,
-    setSearchValue: setDebouncedSearchValue,
-    // Dialog
-    ...keyProps,
-  };
+  const value = useMemo(
+    () => ({
+      searchValue,
+      searchResults,
+      selectedValues,
+      endpointSearchValues,
+      agentsMap,
+      modelSpecs,
+      assistantsMap,
+      mappedEndpoints,
+      endpointsConfig,
+      handleSelectSpec,
+      handleSelectModel,
+      setSelectedValues,
+      handleSelectEndpoint,
+      setEndpointSearchValue,
+      endpointRequiresUserKey,
+      setSearchValue: setDebouncedSearchValue,
+      ...keyProps,
+    }),
+    [
+      searchValue,
+      searchResults,
+      selectedValues,
+      endpointSearchValues,
+      agentsMap,
+      modelSpecs,
+      assistantsMap,
+      mappedEndpoints,
+      endpointsConfig,
+      handleSelectSpec,
+      handleSelectModel,
+      setSelectedValues,
+      handleSelectEndpoint,
+      setEndpointSearchValue,
+      endpointRequiresUserKey,
+      setDebouncedSearchValue,
+      keyProps,
+    ],
+  );
 
   return <ModelSelectorContext.Provider value={value}>{children}</ModelSelectorContext.Provider>;
 }

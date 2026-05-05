@@ -3,6 +3,8 @@ import {
   CalculatorToolDefinition,
   CodeExecutionToolDefinition,
 } from '@librechat/agents';
+import { geminiToolkit } from '~/tools/toolkits/gemini';
+import { oaiToolkit } from '~/tools/toolkits/oai';
 
 /** Extended JSON Schema type that includes standard validation keywords */
 export type ExtendedJsonSchema = {
@@ -474,6 +476,31 @@ Guidelines:
   required: ['prompt'],
 };
 
+/** OpenRouter Image Generation tool JSON schema */
+export const openrouterImageGenSchema: ExtendedJsonSchema = {
+  type: 'object',
+  properties: {
+    prompt: {
+      type: 'string',
+      minLength: 1,
+      description:
+        'Detailed text description of the image to generate. Should be 3-6 sentences, focusing on visual elements, lighting, composition, mood, and style.',
+    },
+    model: {
+      type: 'string',
+      description:
+        'The image generation model to use. Any OpenRouter-compatible image generation model can be used. Defaults to GPT-5 Image for best quality. Examples: openai/gpt-5-image, openai/gpt-5-image-mini, bytedance-seed/seedream-4.5, google/gemini-3-pro-image-preview, google/gemini-2.5-flash-image.',
+    },
+    aspect_ratio: {
+      type: 'string',
+      enum: ['1:1', '2:3', '3:2', '3:4', '4:3', '4:5', '5:4', '9:16', '16:9', '21:9'],
+      description:
+        'Aspect ratio for the generated image. Only supported for Gemini models. Use 16:9 for landscape, 9:16 for portrait, 1:1 for square.',
+    },
+  },
+  required: ['prompt'],
+};
+
 /** Tool definitions registry - maps tool names to their definitions */
 export const toolDefinitions: Record<string, ToolRegistryDefinition> = {
   google: {
@@ -549,54 +576,40 @@ export const toolDefinitions: Record<string, ToolRegistryDefinition> = {
     responseFormat: 'content_and_artifact',
   },
   image_gen_oai: {
-    name: 'image_gen_oai',
-    description: `Generates high-quality, original images based solely on text, not using any uploaded reference images.
-
-When to use \`image_gen_oai\`:
-- To create entirely new images from detailed text descriptions that do NOT reference any image files.
-
-When NOT to use \`image_gen_oai\`:
-- If the user has uploaded any images and requests modifications, enhancements, or remixing based on those uploads → use \`image_edit_oai\` instead.
-
-Generated image IDs will be returned in the response, so you can refer to them in future requests made to \`image_edit_oai\`.`,
-    schema: imageGenOaiSchema,
+    name: oaiToolkit.image_gen_oai.name,
+    description: oaiToolkit.image_gen_oai.description,
+    schema: oaiToolkit.image_gen_oai.schema,
     toolType: 'builtin',
-    responseFormat: 'content_and_artifact',
+    responseFormat: oaiToolkit.image_gen_oai.responseFormat,
   },
   image_edit_oai: {
-    name: 'image_edit_oai',
-    description: `Generates high-quality, original images based on text and one or more uploaded/referenced images.
-
-When to use \`image_edit_oai\`:
-- The user wants to modify, extend, or remix one **or more** uploaded images, either:
-- Previously generated, or in the current request (both to be included in the \`image_ids\` array).
-- Always when the user refers to uploaded images for editing, enhancement, remixing, style transfer, or combining elements.
-- Any current or existing images are to be used as visual guides.
-- If there are any files in the current request, they are more likely than not expected as references for image edit requests.
-
-When NOT to use \`image_edit_oai\`:
-- Brand-new generations that do not rely on an existing image → use \`image_gen_oai\` instead.
-
-Both generated and referenced image IDs will be returned in the response, so you can refer to them in future requests made to \`image_edit_oai\`.`,
-    schema: imageEditOaiSchema,
+    name: oaiToolkit.image_edit_oai.name,
+    description: oaiToolkit.image_edit_oai.description,
+    schema: oaiToolkit.image_edit_oai.schema,
     toolType: 'builtin',
-    responseFormat: 'content_and_artifact',
+    responseFormat: oaiToolkit.image_edit_oai.responseFormat,
   },
   gemini_image_gen: {
-    name: 'gemini_image_gen',
-    description: `Generates high-quality, original images based on text prompts, with optional image context.
+    name: geminiToolkit.gemini_image_gen.name,
+    description: geminiToolkit.gemini_image_gen.description,
+    schema: geminiToolkit.gemini_image_gen.schema,
+    toolType: 'builtin',
+    responseFormat: geminiToolkit.gemini_image_gen.responseFormat,
+  },
+  openrouter_image_gen: {
+    name: 'openrouter_image_gen',
+    description: `Generate high-quality images from text descriptions using OpenRouter-supported models.
 
-When to use \`gemini_image_gen\`:
-- To create entirely new images from detailed text descriptions
-- To generate images using existing images as context or inspiration
-- When the user requests image generation, creation, or asks to "generate an image"
-- When the user asks to "edit", "modify", "change", or "swap" elements in an image (generates new image with changes)
+Supported models include:
+- openai/gpt-5-image: Best for high-quality, detailed images (default)
+- openai/gpt-5-image-mini: Fast and efficient image generation
+- bytedance-seed/seedream-4.5: High-quality generation by ByteDance
+- google/gemini-3-pro-image-preview: Advanced image generation with aspect ratio control
+- google/gemini-2.5-flash-image: Fast generation with aspect ratio control
 
-When NOT to use \`gemini_image_gen\`:
-- For uploading or saving existing images without modification
-
-Generated image IDs will be returned in the response, so you can refer to them in future requests.`,
-    schema: geminiImageGenSchema,
+Always enhance basic prompts into detailed descriptions (3-6 sentences minimum).
+For Gemini models, you can specify aspect ratios like "16:9" for wide images or "9:16" for portraits.`,
+    schema: openrouterImageGenSchema,
     toolType: 'builtin',
     responseFormat: 'content_and_artifact',
   },

@@ -6,16 +6,71 @@ import type {
   TAttachment,
   Agents,
 } from 'librechat-data-provider';
-import { MessageContext, SearchContext } from '~/Providers';
 import { ParallelContentRenderer, type PartWithIndex } from './ParallelContent';
 import type { PresentationResult } from '~/utils/presentation';
-import { extractPresentationResult, mapAttachments } from '~/utils';
+import { extractPresentationResult, mapAttachments, groupSequentialToolCalls } from '~/utils';
+import { MessageContext, SearchContext } from '~/Providers';
 import { EditTextPart, EmptyText } from './Parts';
 import PresentationResultCard from './PresentationResultCard';
 import MemoryArtifacts from './MemoryArtifacts';
-import Sources from '~/components/Web/Sources';
+import ToolCallGroup from './ToolCallGroup';
 import Container from './Container';
 import Part from './Part';
+
+type PartWithContextProps = {
+  part: TMessageContentParts;
+  idx: number;
+  isLastPart: boolean;
+  messageId: string;
+  conversationId?: string | null;
+  nextType?: string;
+  isSubmitting: boolean;
+  isLatestMessage?: boolean;
+  isCreatedByUser: boolean;
+  isLast: boolean;
+  partAttachments: TAttachment[] | undefined;
+};
+
+const PartWithContext = memo(function PartWithContext({
+  part,
+  idx,
+  isLastPart,
+  messageId,
+  conversationId,
+  nextType,
+  isSubmitting,
+  isLatestMessage,
+  isCreatedByUser,
+  isLast,
+  partAttachments,
+}: PartWithContextProps) {
+  const contextValue = useMemo(
+    () => ({
+      messageId,
+      isExpanded: true as const,
+      conversationId,
+      partIndex: idx,
+      nextType,
+      isSubmitting,
+      isLatestMessage,
+    }),
+    [messageId, conversationId, idx, nextType, isSubmitting, isLatestMessage],
+  );
+
+  return (
+    <MessageContext.Provider value={contextValue}>
+      <Part
+        part={part}
+        attachments={partAttachments}
+        isSubmitting={isSubmitting}
+        key={`part-${messageId}-${idx}`}
+        isCreatedByUser={isCreatedByUser}
+        isLast={isLastPart}
+        showCursor={isLastPart && isLast}
+      />
+    </MessageContext.Provider>
+  );
+});
 
 type ContentPartsProps = {
   content: Array<TMessageContentParts | undefined> | undefined;
@@ -153,37 +208,24 @@ const ContentParts = memo(function ContentParts({
     );
   }, [attachmentMap, content, effectiveIsSubmitting]);
 
-  /**
-   * Render a single content part with proper context.
-   */
   const renderPart = useCallback(
     (part: TMessageContentParts, idx: number, isLastPart: boolean) => {
       const toolCallId = (part?.[ContentTypes.TOOL_CALL] as Agents.ToolCall | undefined)?.id ?? '';
-      const partAttachments = attachmentMap[toolCallId];
-
       return (
-        <MessageContext.Provider
+        <PartWithContext
           key={`provider-${messageId}-${idx}`}
-          value={{
-            messageId,
-            isExpanded: true,
-            conversationId,
-            partIndex: idx,
-            nextType: content?.[idx + 1]?.type,
-            isSubmitting: effectiveIsSubmitting,
-            isLatestMessage,
-          }}
-        >
-          <Part
-            part={part}
-            attachments={partAttachments}
-            isSubmitting={effectiveIsSubmitting}
-            key={`part-${messageId}-${idx}`}
-            isCreatedByUser={isCreatedByUser}
-            isLast={isLastPart}
-            showCursor={isLastPart && isLast}
-          />
-        </MessageContext.Provider>
+          idx={idx}
+          part={part}
+          isLast={isLast}
+          messageId={messageId}
+          isLastPart={isLastPart}
+          conversationId={conversationId}
+          isLatestMessage={isLatestMessage}
+          isCreatedByUser={isCreatedByUser}
+          nextType={content?.[idx + 1]?.type}
+          isSubmitting={effectiveIsSubmitting}
+          partAttachments={attachmentMap[toolCallId]}
+        />
       );
     },
     [
@@ -213,10 +255,10 @@ const ContentParts = memo(function ContentParts({
           }
           const isTextPart =
             part?.type === ContentTypes.TEXT ||
-            typeof (part as unknown as Agents.MessageContentText)?.text !== 'string';
+            typeof (part as unknown as Agents.MessageContentText)?.text === 'string';
           const isThinkPart =
             part?.type === ContentTypes.THINK ||
-            typeof (part as unknown as Agents.ReasoningDeltaUpdate)?.think !== 'string';
+            typeof (part as unknown as Agents.ReasoningDeltaUpdate)?.think === 'string';
           if (!isTextPart && !isThinkPart) {
             return null;
           }
@@ -277,11 +319,11 @@ const ContentParts = memo(function ContentParts({
       sequentialParts.push({ part, idx });
     }
   });
+  const groupedParts = groupSequentialToolCalls(sequentialParts);
 
   return (
     <SearchContext.Provider value={{ searchResults }}>
       <MemoryArtifacts attachments={attachments} />
-      <Sources messageId={messageId} conversationId={conversationId || undefined} />
       {showEmptyCursor && (
         <Container>
           <EmptyText />
