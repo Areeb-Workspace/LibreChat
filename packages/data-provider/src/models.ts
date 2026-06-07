@@ -14,6 +14,7 @@ export type TModelSpec = {
   preset: TModelSpecPreset;
   order?: number;
   default?: boolean;
+  softDefault?: boolean;
   description?: string;
   /**
    * Optional group name for organizing specs in the UI selector.
@@ -32,11 +33,14 @@ export type TModelSpec = {
   showIconInHeader?: boolean;
   iconURL?: string | EModelEndpoint; // Allow using project-included icons
   authType?: AuthType;
+  /** Hide the chat input tool badge row while this model spec is active. */
+  hideBadgeRow?: boolean;
   webSearch?: boolean;
   fileSearch?: boolean;
   executeCode?: boolean;
   artifacts?: string | boolean;
   mcpServers?: string[];
+  skills?: boolean | string[];
 };
 
 export const tModelSpecSchema = z.object({
@@ -45,6 +49,7 @@ export const tModelSpecSchema = z.object({
   preset: tModelSpecPresetSchema,
   order: z.number().optional(),
   default: z.boolean().optional(),
+  softDefault: z.boolean().optional(),
   description: z.string().optional(),
   group: z.string().optional(),
   groupIcon: z.union([z.string(), eModelEndpointSchema]).optional(),
@@ -52,17 +57,19 @@ export const tModelSpecSchema = z.object({
   showIconInHeader: z.boolean().optional(),
   iconURL: z.union([z.string(), eModelEndpointSchema]).optional(),
   authType: authTypeSchema.optional(),
+  hideBadgeRow: z.boolean().optional(),
   webSearch: z.boolean().optional(),
   fileSearch: z.boolean().optional(),
   executeCode: z.boolean().optional(),
   artifacts: z.union([z.string(), z.boolean()]).optional(),
   mcpServers: z.array(z.string()).optional(),
+  skills: z.union([z.boolean(), z.array(z.string())]).optional(),
 });
 
 export const specsConfigSchema = z.object({
   enforce: z.boolean().default(false),
   prioritize: z.boolean().default(true),
-  list: z.array(tModelSpecSchema).min(1),
+  list: z.array(tModelSpecSchema).default([]),
   addedEndpoints: z.array(z.union([z.string(), eModelEndpointSchema])).optional(),
 });
 

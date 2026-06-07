@@ -51,6 +51,7 @@ export function permissionBitSupersets(requiredBits: number): readonly number[] 
   if (
     !Number.isInteger(requiredBits) ||
     requiredBits < 0 ||
+    requiredBits > MAX_PERM_BITS ||
     (requiredBits & ~MAX_PERM_BITS) !== 0
   ) {
     return EMPTY_SUPERSETS;
@@ -93,7 +94,7 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')) {
     if (resourceType) {
       query.resourceType = resourceType;
     }
-    return await AclEntry.find(query).lean();
+    return await AclEntry.find(query).lean<IAclEntry[]>();
   }
 
   /**
@@ -107,7 +108,7 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')) {
     resourceId: string | Types.ObjectId,
   ): Promise<IAclEntry[]> {
     const AclEntry = mongoose.models.AclEntry as Model<IAclEntry>;
-    return await AclEntry.find({ resourceType, resourceId }).lean();
+    return await AclEntry.find({ resourceType, resourceId }).lean<IAclEntry[]>();
   }
 
   /**
@@ -132,7 +133,7 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')) {
       $or: principalsQuery,
       resourceType,
       resourceId,
-    }).lean();
+    }).lean<IAclEntry[]>();
   }
 
   /**
@@ -263,9 +264,10 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')) {
     resourceType: string,
     resourceId: string | Types.ObjectId,
     permBits: number,
-    grantedBy: string | Types.ObjectId,
+    grantedBy?: string | Types.ObjectId,
     session?: ClientSession,
     roleId?: string | Types.ObjectId,
+    expiredAt?: Date,
   ): Promise<IAclEntry | null> {
     const AclEntry = mongoose.models.AclEntry as Model<IAclEntry>;
     const query: Record<string, unknown> = {
@@ -291,9 +293,10 @@ export function createAclEntryMethods(mongoose: typeof import('mongoose')) {
     const update = {
       $set: {
         permBits,
-        grantedBy,
         grantedAt: new Date(),
+        ...(grantedBy && { grantedBy }),
         ...(roleId && { roleId }),
+        ...(expiredAt && { expiredAt }),
       },
     };
 

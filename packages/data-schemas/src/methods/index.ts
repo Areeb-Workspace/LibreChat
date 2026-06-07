@@ -32,6 +32,17 @@ import { createPresetMethods, type PresetMethods } from './preset';
 import { createConversationTagMethods, type ConversationTagMethods } from './conversationTag';
 import { createMessageMethods, type MessageMethods } from './message';
 import { createConversationMethods, type ConversationMethods } from './conversation';
+import { createChatProjectMethods, type ChatProjectMethods } from './chatProject';
+export type {
+  AssignConversationToProjectResult,
+  ChatProjectSortBy,
+  ChatProjectSortDirection,
+  CreateChatProjectInput,
+  DeleteChatProjectResult,
+  ListChatProjectsOptions,
+  ListChatProjectsResult,
+  UpdateChatProjectInput,
+} from './chatProject';
 /* Tier 3 — Complex (heavier injection) */
 import {
   createTxMethods,
@@ -45,6 +56,27 @@ import {
 import { createTransactionMethods, type TransactionMethods } from './transaction';
 import { createSpendTokensMethods, type SpendTokensMethods } from './spendTokens';
 import { createPromptMethods, type PromptMethods, type PromptDeps } from './prompt';
+import {
+  createSkillMethods,
+  partitionIssues,
+  validateSkillName,
+  validateSkillBody,
+  validateRelativePath,
+  validateSkillFrontmatter,
+  validateSkillDescription,
+  deriveStructuredFrontmatterFields,
+  inferSkillFileCategory,
+  type SkillMethods,
+  type SkillDeps,
+  type CreateSkillInput,
+  type CreateSkillResult,
+  type UpdateSkillInput,
+  type UpsertSkillFileInput,
+  type ListSkillsByAccessParams,
+  type ListSkillsByAccessResult,
+  type UpdateSkillResult,
+  type ValidationIssue,
+} from './skill';
 /* Tier 5 — Agent */
 import { createAgentMethods, type AgentMethods, type AgentDeps } from './agent';
 /* Config */
@@ -53,6 +85,16 @@ import { createConfigMethods, type ConfigMethods } from './config';
 export { RoleConflictError, DEFAULT_REFRESH_TOKEN_EXPIRY, DEFAULT_SESSION_EXPIRY };
 export { tokenValues, cacheTokenValues, premiumTokenValues, defaultRate };
 export { permissionBitSupersets };
+export {
+  partitionIssues,
+  validateSkillName,
+  validateSkillBody,
+  validateRelativePath,
+  validateSkillFrontmatter,
+  validateSkillDescription,
+  deriveStructuredFrontmatterFields,
+  inferSkillFileCategory,
+};
 
 export type AllMethods = UserMethods &
   SessionMethods &
@@ -79,10 +121,12 @@ export type AllMethods = UserMethods &
   ConversationTagMethods &
   MessageMethods &
   ConversationMethods &
+  ChatProjectMethods &
   TxMethods &
   TransactionMethods &
   SpendTokensMethods &
   PromptMethods &
+  SkillMethods &
   AgentMethods &
   ConfigMethods;
 
@@ -155,6 +199,12 @@ export function createMethods(
   };
   const promptMethods = createPromptMethods(mongoose, promptDeps);
 
+  const skillDeps: SkillDeps = {
+    removeAllPermissions,
+    getSoleOwnedResourceIds: aclEntryMethods.getSoleOwnedResourceIds,
+  };
+  const skillMethods = createSkillMethods(mongoose, skillDeps);
+
   // Role methods with optional cache injection
   const roleDeps: RoleDeps = { getCache: deps.getCache };
   const roleMethods = createRoleMethods(mongoose, roleDeps);
@@ -198,11 +248,13 @@ export function createMethods(
     ...createConversationTagMethods(mongoose),
     ...messageMethods,
     ...conversationMethods,
+    ...createChatProjectMethods(mongoose),
     /* Tier 3 */
     ...txMethods,
     ...transactionMethods,
     ...spendTokensMethods,
     ...promptMethods,
+    ...skillMethods,
     /* Tier 5 */
     ...agentMethods,
     /* Config */
@@ -236,10 +288,21 @@ export type {
   ConversationTagMethods,
   MessageMethods,
   ConversationMethods,
+  ChatProjectMethods,
   TxMethods,
   TransactionMethods,
   SpendTokensMethods,
   PromptMethods,
+  SkillMethods,
+  SkillDeps,
+  CreateSkillInput,
+  CreateSkillResult,
+  UpdateSkillInput,
+  UpsertSkillFileInput,
+  ListSkillsByAccessParams,
+  ListSkillsByAccessResult,
+  UpdateSkillResult,
+  ValidationIssue,
   AgentMethods,
   ConfigMethods,
 };

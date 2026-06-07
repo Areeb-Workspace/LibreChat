@@ -7,7 +7,10 @@ import type {
   TAttachment,
   TMessage,
   TBanner,
+  ReasoningResponseKey,
+  ReasoningParameterFormat,
 } from './schemas';
+import type { RefillIntervalUnit } from './balance';
 import type { SettingDefinition } from './generate';
 import type { TMinimalFeedback } from './feedback';
 import type { ContentTypes } from './types/runs';
@@ -68,6 +71,7 @@ export type TEndpointOption = Pick<
   | 'file_ids'
   // System field
   | 'system'
+  | 'chatProjectId'
   // Google examples
   | 'examples'
   // Context
@@ -102,6 +106,7 @@ export type TEphemeralAgent = {
   file_search?: boolean;
   execute_code?: boolean;
   artifacts?: string;
+  skills?: boolean;
 };
 
 export type TPayload = Partial<TMessage> &
@@ -115,6 +120,13 @@ export type TPayload = Partial<TMessage> &
     editedContent?: TEditedContent | null;
     /** Added conversation for multi-convo feature */
     addedConvo?: TConversation;
+    /**
+     * Skills the user selected via the `$` popover for this turn. Names, not IDs
+     * — the backend resolves them against the user's ACL-accessible skill set,
+     * loads each SKILL.md body, and prepends one meta user message per skill
+     * before the LLM turn runs.
+     */
+    manualSkills?: string[];
   };
 
 export type TEditedContent =
@@ -144,6 +156,8 @@ export type TSubmission = {
   editedContent?: TEditedContent | null;
   /** Added conversation for multi-convo feature */
   addedConvo?: TConversation;
+  /** Skills the user invoked via the `$` popover for this submission. */
+  manualSkills?: string[];
 };
 
 export type EventSubmission = Omit<TSubmission, 'initialResponse'> & { initialResponse: TMessage };
@@ -202,6 +216,7 @@ export type TUser = {
   avatar: string;
   role: string;
   provider: string;
+  tenantId?: string;
   plugins?: string[];
   twoFactorEnabled?: boolean;
   backupCodes?: TBackupCode[];
@@ -273,6 +288,43 @@ export type TUpdateConversationRequest = {
 
 export type TUpdateConversationResponse = TConversation;
 
+export type TChatProject = {
+  _id: string;
+  name: string;
+  description?: string;
+  user?: string;
+  conversationCount: number;
+  lastConversationAt?: string | null;
+  lastConversationId?: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TCreateChatProjectRequest = {
+  name: string;
+  description?: string;
+};
+
+export type TUpdateChatProjectRequest = Partial<TCreateChatProjectRequest> & {
+  projectId: string;
+};
+
+export type TDeleteChatProjectResponse = {
+  deletedCount: number;
+  modifiedCount: number;
+};
+
+export type TAssignConversationToProjectRequest = {
+  conversationId: string;
+  projectId: string | null;
+};
+
+export type TAssignConversationToProjectResponse = {
+  conversation: TConversation;
+  previousProjectId: string | null;
+  projectId: string | null;
+};
+
 export type TDeleteConversationRequest = {
   conversationId?: string;
   thread_id?: string;
@@ -302,12 +354,16 @@ export type TSharedMessagesResponse = Omit<TSharedLink, 'messages'> & {
 
 export type TCreateShareLinkRequest = Pick<TConversation, 'conversationId'>;
 
-export type TUpdateShareLinkRequest = Pick<TSharedLink, 'shareId'>;
+export type TUpdateShareLinkRequest = Pick<TSharedLink, 'shareId' | 'targetMessageId'>;
 
 export type TSharedLinkResponse = Pick<TSharedLink, 'shareId'> &
-  Pick<TConversation, 'conversationId'>;
+  Pick<TSharedLink, 'targetMessageId'> &
+  Pick<TConversation, 'conversationId'> & {
+    _id?: string;
+  };
 
-export type TSharedLinkGetResponse = TSharedLinkResponse & {
+export type TSharedLinkGetResponse = Omit<TSharedLinkResponse, 'shareId'> & {
+  shareId: string | null;
   success: boolean;
 };
 
@@ -375,11 +431,17 @@ export type TConfig = {
   modelDisplayLabel?: string;
   userProvide?: boolean | null;
   userProvideURL?: boolean | null;
+  userProvideAccessKeyId?: boolean;
+  userProvideSecretAccessKey?: boolean;
+  userProvideSessionToken?: boolean;
+  userProvideBearerToken?: boolean;
   disableBuilder?: boolean;
   retrievalModels?: string[];
   capabilities?: string[];
   customParams?: {
     defaultParamsEndpoint?: string;
+    reasoningFormat?: ReasoningParameterFormat;
+    reasoningKey?: ReasoningResponseKey;
     paramDefinitions?: Partial<SettingDefinition>[];
   };
 };
@@ -673,7 +735,59 @@ export type TBalanceResponse = {
   // Automatic refill settings
   autoRefillEnabled: boolean;
   refillIntervalValue?: number;
-  refillIntervalUnit?: 'seconds' | 'minutes' | 'hours' | 'days' | 'weeks' | 'months';
-  lastRefill?: Date;
+  refillIntervalUnit?: RefillIntervalUnit;
+  lastRefill?: Date | string;
   refillAmount?: number;
+};
+
+/* -------------------------------------------------------------------------- */
+/* Skill UI extensions (not yet persisted — phase 2 backend will fill these)  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * @deprecated Superseded by the persisted `userInvocable` /
+ * `disableModelInvocation` pair derived from frontmatter. Retained for the
+ * transition window so older UI forms and tests still type-check; the
+ * backend no longer reads or writes it.
+ */
+export enum InvocationMode {
+  auto = 'auto',
+  manual = 'manual',
+  both = 'both',
+}
+
+/**
+ * Node in the filesystem-style skill tree view. Phase 1 derives these from
+ * the flat `TSkillFile[]` list; phase 2 will have the backend serve them
+ * directly from a persisted folder hierarchy. Kept in the shared types so
+ * tree UI helpers can be imported from both client and server.
+ */
+export type TSkillNode = {
+  _id: string;
+  skillId: string;
+  parentId: string | null;
+  type: 'file' | 'folder';
+  name: string;
+  fileId?: string;
+  order: number;
+  author: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type TSkillTreeResponse = {
+  nodes: TSkillNode[];
+};
+
+export type TCreateSkillNodeRequest = {
+  type: 'file' | 'folder';
+  name: string;
+  parentId?: string | null;
+  order?: number;
+};
+
+export type TUpdateSkillNodeRequest = {
+  name?: string;
+  parentId?: string | null;
+  order?: number;
 };

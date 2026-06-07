@@ -1,7 +1,10 @@
 const { logger } = require('@librechat/data-schemas');
+const { getMissingCustomUserVars } = require('@librechat/api');
 const { CacheKeys, Constants } = require('librechat-data-provider');
 const { getMCPManager, getMCPServersRegistry, getFlowStateManager } = require('~/config');
 const { findToken, createToken, updateToken, deleteTokens } = require('~/models');
+const { exchangeOboToken } = require('~/server/services/OboTokenService');
+const { createOboTrustChecker } = require('~/server/services/OboPolicyService');
 const { updateMCPServerTools } = require('~/server/services/Config');
 const { getLogStores } = require('~/cache');
 
@@ -18,6 +21,7 @@ const { getLogStores } = require('~/cache');
  * @param {number} [params.connectionTimeout]
  * @param {FlowStateManager<any>} [params.flowManager]
  * @param {(authURL: string) => Promise<void>} [params.oauthStart]
+ * @param {() => Promise<void>} [params.oauthEnd]
  * @param {Record<string, Record<string, string>>} [params.userMCPAuthMap]
  */
 async function reinitMCPServer({
@@ -32,6 +36,7 @@ async function reinitMCPServer({
   oauthStart: _oauthStart,
   flowManager: _flowManager,
   serverConfig: providedConfig,
+  oauthEnd,
 }) {
   /** @type {MCPConnection | null} */
   let connection = null;
@@ -60,32 +65,54 @@ async function reinitMCPServer({
           oauthUrl: null,
           tools: null,
         };
-      }
-      logger.info(
-        `[MCP Reinitialize] Server ${serverName} had failed inspection, attempting reinspection`,
-      );
-      try {
-        const storageLocation = serverConfig.source === 'user' ? 'DB' : 'CACHE';
-        await registry.reinspectServer(serverName, storageLocation, user?.id);
-        logger.info(`[MCP Reinitialize] Reinspection succeeded for server: ${serverName}`);
-      } catch (reinspectError) {
-        logger.error(
-          `[MCP Reinitialize] Reinspection failed for server ${serverName}:`,
-          reinspectError,
+      } else {
+        logger.info(
+          `[MCP Reinitialize] Server ${serverName} had failed inspection, attempting reinspection`,
         );
-        return {
-          availableTools: null,
-          success: false,
-          message: `MCP server '${serverName}' is still unreachable`,
-          oauthRequired: false,
-          serverName,
-          oauthUrl: null,
-          tools: null,
-        };
+        try {
+          const storageLocation = serverConfig.source === 'user' ? 'DB' : 'CACHE';
+          await registry.reinspectServer(serverName, storageLocation, user?.id);
+          logger.info(`[MCP Reinitialize] Reinspection succeeded for server: ${serverName}`);
+        } catch (reinspectError) {
+          logger.error(
+            `[MCP Reinitialize] Reinspection failed for server ${serverName}:`,
+            reinspectError,
+          );
+          return {
+            availableTools: null,
+            success: false,
+            message: `MCP server '${serverName}' is still unreachable`,
+            oauthRequired: false,
+            serverName,
+            oauthUrl: null,
+            tools: null,
+          };
+        }
       }
     }
 
     const customUserVars = userMCPAuthMap?.[`${Constants.mcp_prefix}${serverName}`];
+
+    const missingUserVars = getMissingCustomUserVars(serverConfig ?? {}, customUserVars);
+    if (missingUserVars.length > 0) {
+      logger.warn(
+        `[MCP Reinitialize] Skipping server '${serverName}': required user-provided variable(s) not set: ${missingUserVars.join(
+          ', ',
+        )}. Tools will not be exposed until the user configures them.`,
+      );
+      return {
+        availableTools: null,
+        success: false,
+        message: `MCP server '${serverName}' requires user-provided variable(s) [${missingUserVars.join(
+          ', ',
+        )}] which are not set`,
+        oauthRequired: false,
+        serverName,
+        oauthUrl: null,
+        tools: null,
+      };
+    }
+
     const flowManager = _flowManager ?? getFlowStateManager(getLogStores(CacheKeys.FLOWS));
     const mcpManager = getMCPManager();
     const tokenMethods = { findToken, updateToken, createToken, deleteTokens };
@@ -108,9 +135,12 @@ async function reinitMCPServer({
         flowManager,
         tokenMethods,
         returnOnOAuth,
+        oauthEnd,
         customUserVars,
         connectionTimeout,
         serverConfig,
+        oboTokenResolver: exchangeOboToken,
+        oboTrustChecker: createOboTrustChecker(),
       });
 
       logger.info(`[MCP Reinitialize] Successfully established connection for ${serverName}`);
@@ -144,6 +174,8 @@ async function reinitMCPServer({
             customUserVars,
             connectionTimeout,
             configServers,
+            oboTokenResolver: exchangeOboToken,
+            oboTrustChecker: createOboTrustChecker(),
           });
 
           if (discoveryResult.tools && discoveryResult.tools.length > 0) {

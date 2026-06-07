@@ -1,4 +1,6 @@
 export * from './app';
+/* Artifacts */
+export * from './artifacts';
 /* Admin */
 export * from './admin';
 export * from './cdn';
@@ -33,10 +35,18 @@ export * from './flow/manager';
 export * from './middleware';
 /* Memory */
 export * from './memory';
+/* Model Specs */
+export * from './modelSpecs';
 /* Agents */
 export * from './agents';
+/* Actions */
+export * from './actions';
 /* Prompts */
 export * from './prompts';
+/* Projects */
+export * from './projects';
+/* Skills */
+export * from './skills';
 /* Endpoints */
 export * from './endpoints';
 /* Files */
@@ -49,10 +59,15 @@ export * from './tools';
 export * from './web';
 /* Cache */
 export * from './cache';
+/* Shared Links */
+export * from './shared-links/access';
+export * from './shared-links/service';
 /* Stream */
 export * from './stream';
 /* Diagnostics */
 export { memoryDiagnostics } from './utils/memory';
+/* RUM */
+export * from './rum/proxy';
 /* types */
 export type * from './mcp/types';
 export type * from './flow/types';
