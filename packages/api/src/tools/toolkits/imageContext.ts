@@ -1,3 +1,5 @@
+import { logger } from '@librechat/data-schemas';
+
 /**
  * Builds tool context string for image generation tools based on available image files.
  * @param params - The parameters for building image context
@@ -15,9 +17,11 @@ export function buildImageToolContext({
   toolName: string;
   contextDescription?: string;
 }): string {
+  logger.debug('[buildImageToolContext]', { imageFiles, toolName, contextDescription });
   if (!imageFiles || imageFiles.length === 0) {
     return '';
   }
+
 
   let toolContext = '';
   for (let i = 0; i < imageFiles.length; i++) {
