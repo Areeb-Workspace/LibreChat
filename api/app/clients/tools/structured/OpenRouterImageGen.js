@@ -321,7 +321,7 @@ Error Message: ${typeof errorDetails === 'string' ? errorDetails : JSON.stringif
           [
             {
               type: ContentTypes.TEXT,
-              text: `Image data retrieved for file_id "${file_id}".\n\nData URL (use this to send to external services):\n${dataUrl}`,
+              text: `Image data retrieved for file_id "${file_id}".\n\nData URL (use this to send to external services):\nNot Available at the moment.`,
             },
           ],
           { file_id, mimeType, size: buffer.length },
