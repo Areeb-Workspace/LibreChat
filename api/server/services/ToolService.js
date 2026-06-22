@@ -853,28 +853,6 @@ async function loadToolDefinitionsWrapper({ req, res, agent, streamId = null, to
         toolContextMap.gemini_image_gen = toolContext;
       }
     }
-
-
-    /**
-     * Inject uploaded image file_ids into the system prompt for openrouter_image_gen.
-     * Mirrors the pattern for image_edit_oai and gemini_image_gen above.
-     * The toolContextMap values are joined and prepended to the system message in run.ts:321,
-     * so the model can read these IDs and pass them to the tool.
-     */
-    const hasOpenRouterImageGen = filteredTools.includes('openrouter_image_gen');
-    if (hasOpenRouterImageGen) {
-      const toolContext = buildImageToolContext({
-        imageFiles,
-        toolName: 'openrouter_image_gen',
-        contextDescription: 'image context',
-      });
-      if (toolContext) {
-        toolContextMap.openrouter_image_gen = toolContext;
-      }
-      logger.debug(
-        `[loadToolDefinitionsWrapper] Added tool context for openrouter_image_gen: ${toolContext}`,
-      );
-    }
   }
 
   return {
