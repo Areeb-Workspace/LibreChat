@@ -950,6 +950,16 @@ async function saveBase64Image(
     fileName: filename,
     buffer: image.buffer,
   });
+  /* Log everythig to debug */
+  logger.debug('Saving base64 image with the following metadata:', {
+    file_id,
+    filename,
+    type,
+    filepath,
+    width: image.width,
+    height: image.height,
+  });
+
   return await db.createFile(
     {
       type,

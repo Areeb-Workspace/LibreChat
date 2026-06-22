@@ -37,7 +37,7 @@ const {
   TavilySearchResults,
   createGeminiImageTool,
   createOpenAIImageTools,
-  OpenRouterImageGen,
+  createOpenRouterImageTools,
 } = require('../');
 const { createMCPTool, createMCPTools, resolveConfigServers } = require('~/server/services/MCP');
 const { createFileSearchTool, primeFiles: primeSearchFiles } = require('./fileSearch');
@@ -47,6 +47,7 @@ const { loadAuthValues } = require('~/server/services/Tools/credentials');
 const { getMCPServerTools } = require('~/server/services/Config');
 const { getMCPServersRegistry } = require('~/config');
 const { getRoleByName } = require('~/models');
+const { log } = require('handlebars');
 
 /**
  * Validates the availability and authentication of tools for a user based on environment variables or user-specific plugin authentication values.
@@ -183,7 +184,6 @@ const loadTools = async ({
     'azure-ai-search': StructuredACS,
     traversaal_search: TraversaalSearch,
     tavily_search_results_json: TavilySearchResults,
-    openrouter_image_gen: OpenRouterImageGen,
   };
 
   const customConstructors = {
@@ -221,6 +221,37 @@ const loadTools = async ({
         toolContextMap.gemini_image_gen = toolContext;
       }
       return createGeminiImageTool({
+        ...authValues,
+        isAgent: !!agent,
+        req: options.req,
+        imageFiles,
+        userId: user,
+        fileStrategy,
+      });
+    },
+    /**
+     * Custom constructor for openrouter_image_gen and openrouter_image_fetch.
+     * Returns an array of tools: [imageGenTool, imageFetchTool].
+     * Injects uploaded image file_ids into the system prompt via toolContextMap.
+     */
+    openrouter_image_gen: async (toolContextMap) => {
+      const authFields = getAuthFields('openrouter_image_gen');
+      const authValues = await loadAuthValues({ userId: user, authFields, throwError: false });
+
+      const imageFiles = options.tool_resources?.[EToolResources.image_edit]?.files ?? [];
+
+      const toolContext = buildImageToolContext({
+        imageFiles,
+        toolName: 'openrouter_image_gen',
+        contextDescription: 'image context',
+      });
+      if (toolContext) {
+        toolContextMap.openrouter_image_gen = toolContext;
+      }
+      logger.debug('Initializing OpenRouterImageTools with context: ', {
+        toolContext,
+      });
+      return createOpenRouterImageTools({
         ...authValues,
         isAgent: !!agent,
         req: options.req,
