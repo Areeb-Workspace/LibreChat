@@ -120,22 +120,12 @@ const categorizeFileForToolResources = ({
     return;
   }
 
-  const inRequestSet = requestFileSet.has(file.file_id);
-  const isImage = file.type?.startsWith('image');
-  const hasDimensions = !!(file.height && file.width);
-
-  logger.debug('[categorizeFileForToolResources] Checking file for image_edit:', {
-    file_id: file.file_id,
-    type: file.type,
-    inRequestSet,
-    isImage,
-    height: file.height,
-    width: file.width,
-    hasDimensions,
-    willAddToImageEdit: inRequestSet && isImage && hasDimensions,
-  });
-
-  if (inRequestSet && isImage && hasDimensions) {
+  if (
+    requestFileSet.has(file.file_id) &&
+    file.type.startsWith('image') &&
+    file.height &&
+    file.width
+  ) {
     addFileToResource({
       file,
       resourceType: EToolResources.image_edit,
@@ -318,13 +308,6 @@ export const primeResources = async ({
         attachmentFileIds.add(file.file_id);
       }
     }
-
-    logger.debug('[primeResources] Final tool_resources after categorization:', {
-      keys: Object.keys(tool_resources),
-      image_edit_count: tool_resources[EToolResources.image_edit]?.files?.length ?? 0,
-      execute_code_count: tool_resources[EToolResources.execute_code]?.files?.length ?? 0,
-      file_search_count: tool_resources[EToolResources.file_search]?.files?.length ?? 0,
-    });
 
     return { attachments: attachments.length > 0 ? attachments : [], tool_resources };
   } catch (error) {

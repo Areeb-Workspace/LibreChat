@@ -8,7 +8,6 @@ trigger:
     exclude:
     - update/*
     - feature/*
-pr: none
 
 pool:
   vmImage: "ubuntu-latest"
